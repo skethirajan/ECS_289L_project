@@ -1,1 +1,1 @@
-# ECH_289L_project
+# ECS 289L Project
