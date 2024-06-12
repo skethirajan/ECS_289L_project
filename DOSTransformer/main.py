@@ -12,6 +12,7 @@ from torch_geometric.loader import DataLoader
 from embedder_phDOS.DOSTransformer_phonon import DOSTransformer_phonon
 from embedder_phDOS.graphnetwork_phonon import Graphnetwork_phonon, Graphnetwork2_phonon
 from embedder_phDOS.mlp_phonon import mlp_phonon, mlp2_phonon
+from embedder_phDOS.e3nn_phonon import e3nn_phonon, get_neighbors
 
 from utils import (
     test_phonon1,
@@ -117,7 +118,13 @@ def get_expt_info(args):
     if args.embedder.lower() == "dostransformer":
         pass
 
-    elif args.embedder.lower() in ["graphnetwork", "graphnetwork2", "mlp", "mlp2"]:
+    elif args.embedder.lower() in [
+        "graphnetwork",
+        "graphnetwork2",
+        "mlp",
+        "mlp2",
+        "e3nn",
+    ]:
         config.remove("transformer")
         config.remove("attn_drop")
 
@@ -235,6 +242,28 @@ def main():  # sourcery skip: extract-duplicate-method  # sourcery skip: extract
             args.layers, n_atom_feat, n_bond_feat, n_hidden, out_dim, device
         ).to(device)
 
+    elif embedder == "e3nn":
+        e3nn_n_bond_feat = 64
+        model = e3nn_phonon(
+            in_dim=n_atom_feat,  # dimension of one-hot encoding of atom type
+            em_dim=e3nn_n_bond_feat,  # dimension of atom-type embedding
+            irreps_in=str(e3nn_n_bond_feat)
+            + "x0e",  # em_dim scalars (L=0 and even parity) on each atom to represent atom type
+            irreps_out=str(out_dim)
+            + "x0e",  # out_dim scalars (L=0 and even parity) to output
+            irreps_node_attr=str(e3nn_n_bond_feat)
+            + "x0e",  # em_dim scalars (L=0 and even parity) on each atom to represent atom type
+            layers=args.layers,  # number of nonlinearities (number of convolutions = layers + 1)
+            mul=32,  # multiplicity of irreducible representations
+            lmax=1,  # maximum order of spherical harmonics
+            max_radius=args.r_max,  # cutoff radius for convolution
+            num_neighbors=get_neighbors(
+                df, idx_train
+            ).mean(),  # scaling factor based on the typical number of neighbors
+            reduce_output=True,  # whether or not to aggregate features of all atoms at the end
+        )
+        # model.pool = True
+        model.to(device)
     else:
         raise f"error occured : Inappropriate model name, `{embedder}`"  # type: ignore
 
@@ -446,7 +475,6 @@ def main():  # sourcery skip: extract-duplicate-method  # sourcery skip: extract
                 wall = end_time - start_time
 
                 if (epoch + 1) % args.eval == 0:
-
                     train_rmse, train_mse, train_mae, train_r2 = test_phonon2(
                         model, train_loader, criterion, criterion_2, r2, device
                     )
