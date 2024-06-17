@@ -275,53 +275,34 @@ class Decoder(nn.Module):
         # output3 = torch.cat([output, output2],dim=1)
         # output3 = self.mlp(output3)
         return output
-
-
+    
 ############################################################################################################################
 ## Basic Building Blocks
 ############################################################################################################################
 
-
 class EdgeModel(nn.Module):
     def __init__(self, n_hidden):
         super(EdgeModel, self).__init__()
-        self.edge_mlp = nn.Sequential(
-            nn.Linear(n_hidden * 3, n_hidden * 2),
-            nn.LayerNorm(n_hidden * 2),
-            nn.PReLU(),
-            nn.Linear(n_hidden * 2, n_hidden),
-        )
+        self.edge_mlp = nn.Sequential(nn.Linear(n_hidden*3, n_hidden*2), nn.LayerNorm(n_hidden*2), nn.PReLU(), nn.Linear(n_hidden*2, n_hidden))
 
     def forward(self, src, dest, edge_attr):
         # src, dest: [E, F_x], where E is the number of edges.
         # edge_attr: [E, F_e]
         # u: [B, F_u], where B is the number of graphs.
         # batch: [E] with max entry B - 1.
-        out = torch.cat(
-            [src, dest, edge_attr], 1
-        )  # u.shape(16, 201, 128) else.shape(34502, 128)
+        out = torch.cat([src, dest, edge_attr], 1) # u.shape(16, 201, 128) else.shape(34502, 128)
         return self.edge_mlp(out)
 
 
 class NodeModel(nn.Module):
     def __init__(self, n_hidden):
         super(NodeModel, self).__init__()
-        self.node_mlp_1 = nn.Sequential(
-            nn.Linear(n_hidden * 2, n_hidden * 2),
-            nn.LayerNorm(n_hidden * 2),
-            nn.PReLU(),
-            nn.Linear(n_hidden * 2, n_hidden),
-        )
-        self.node_mlp_2 = nn.Sequential(
-            nn.Linear(n_hidden * 2, n_hidden * 2),
-            nn.LayerNorm(n_hidden * 2),
-            nn.PReLU(),
-            nn.Linear(n_hidden * 2, n_hidden),
-        )
+        self.node_mlp_1 = nn.Sequential(nn.Linear(n_hidden*2, n_hidden*2), nn.LayerNorm(n_hidden*2), nn.PReLU(), nn.Linear(n_hidden*2, n_hidden))
+        self.node_mlp_2 = nn.Sequential(nn.Linear(n_hidden*2, n_hidden*2), nn.LayerNorm(n_hidden*2), nn.PReLU(), nn.Linear(n_hidden*2, n_hidden))
 
     def forward(self, x, edge_index, edge_attr):
         row, col = edge_index
-        out = scatter_mean(edge_attr, col, dim=0, dim_size=x.size(0))
+        out = scatter_mean(edge_attr, col, dim=0, dim_size=x.size(0)) 
         out = torch.cat([x, out], dim=1)
 
         return self.node_mlp_2(out)

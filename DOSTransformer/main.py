@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument(
         "--embedder", type=str, default="DOSTransformer", metavar="", help="embedder"
     )
-    parser.add_argument("--device", type=int, default=6, metavar="", help="GPU to use")
+    parser.add_argument("--device", type=int, default=0, metavar="", help="GPU to use")
     parser.add_argument(
         "--lr", type=float, default=0.0001, metavar="", help="learning rate"
     )
@@ -61,7 +61,7 @@ def parse_args():
         "--eval", type=int, default=5, metavar="", help="evaluation step"
     )
     parser.add_argument(
-        "--es", type=int, default=50, metavar="", help="early stopping criteria"
+        "--es", type=int, default=200, metavar="", help="early stopping criteria"
     )
     parser.add_argument(
         "--hidden", type=int, default=256, metavar="", help="hidden dim"
@@ -234,12 +234,12 @@ def main():  # sourcery skip: extract-duplicate-method  # sourcery skip: extract
 
     elif embedder == "mlp":
         model = mlp_phonon(
-            args.layers, n_atom_feat, n_bond_feat, n_hidden, out_dim, device
+            args.layers, n_atom_feat, n_bond_feat, n_hidden, args.r_max, device
         ).to(device)
 
     elif embedder == "mlp2":
         model = mlp2_phonon(
-            args.layers, n_atom_feat, n_bond_feat, n_hidden, out_dim, device
+            args.layers, n_atom_feat, n_bond_feat, n_hidden, args.r_max, device
         ).to(device)
 
     elif embedder == "e3nn":
@@ -414,7 +414,7 @@ def main():  # sourcery skip: extract-duplicate-method  # sourcery skip: extract
 
                     if (
                         len(best_losses) > int(args.es / args.eval)
-                        and best_losses[-1] == best_losses[-int(args.es / 5)]
+                        and best_losses[-1] == best_losses[-int(args.es / args.eval)]
                     ):
                         fi.write("\nEarly stop!!\n")
                         fi.flush()
@@ -547,7 +547,7 @@ def main():  # sourcery skip: extract-duplicate-method  # sourcery skip: extract
 
                     if (
                         len(best_losses) > int(args.es / args.eval)
-                        and best_losses[-1] == best_losses[-int(args.es / 5)]
+                        and best_losses[-1] == best_losses[-int(args.es / args.eval)]
                     ):
                         fi.write("\nEarly stop!!\n")
                         fi.flush()
